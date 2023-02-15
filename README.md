@@ -1,5 +1,5 @@
 # DAPNET2APRSNotifier
-This is sort of a merging of DAPNET2APRS by KR0SIV and DAPNETNotifier by n8acl
+This is sort of a merging of DAPNET2APRS by KR0SIV and DAPNETNotifier by N8ACL
 
 At first I tried DAPNET2APRS... and while it worked at sending the messages to APRS... it was sending ALL the messages, including ones that weren't intended for me.  This seemed to be due to trying to parse the pi-star HTML for the messages, there had to be a better way.
 
