@@ -12,8 +12,11 @@ Once I did that, I made a few other changes... DAPNETNotifier uses sqlite to kee
 Here's how to install this on a Pi-Star or WPSD system so it will run as a service behind the scenes.
 
 github clone https://github.com/mytechguyri/DAPNET2APRSNotifier.git
+
 cd DAPNET2APRSNotifier
+
 ./install.sh
+
 Then complete the config in the /etc/dapnet2aprs file and start the dapnet2aprs service.
 
 Make sure you have OUTPUT port 8080 open on the firewall, or else you won't be able to connect to the DAPNET API.  I discovered this after trying to figure out all night why the DAPNET API wasn't working, only to find the WPSD firewall rules were defaulting to DENY on the OUTPUT chain (typically output is default ACCEPT, because folks are more concerned with what gets in, not what gets out)
