@@ -1,0 +1,24 @@
+#Place this file in /etc/dapnet2aprs
+[DEFAULT]
+wait_time = 60                                  #This is the minimum time between polls of DAPNET.  values less than 60 are ignored.
+log_path = /var/log/pi-star/DAPNET2APRS.log     #Path where the program will write its log files
+
+[DAPNET]
+server = hampager.de                            #DAPNET API Server
+username =                                      #Your call sign
+password =                                      #Your DAPNET API Key
+pager_id =                                      #Your DAPNET pager RIC
+
+[APRS]
+server = rotate.aprs.net                        #Your preferred APRS Server
+callsign =                                      #Your callsign
+send_to =                                       #Callsign and SSID you want the message sent to on APRS
+
+[DATABASE]
+engine = sqlite                                 #Valid values are mysql or sqlite
+
+[MYSQL]
+host =                                          #IP Address or hostname of your MySQL server if using MySQL
+user =                                          #MySQL user ID
+password =                                      #MySQL Password
+database =                                      #Database name you want to store pager messages in.  If it does not exist the program will create it.
