@@ -11,146 +11,190 @@ import time
 import http.client, urllib
 import sys
 import aprslib
+import logging
+import configparser
 from requests.auth import HTTPBasicAuth
 from os import system, name
 from time import sleep
 
+##### Setup logging
+logger = logging.getLogger('dapnet2aprs')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler('/var/log/pi-star/DAPNET2APRS.log')
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
-##### Define Configs
+##### Read Config file and set variables
+logger.info ("Starting DAPNET2APRSNotifier...")
+config = configparser.ConfigParser()
+read_config = config.read('/etc/dapnet2aprs')
+if not read_config:
+    logger.error("Failed to read the config file at /etc/dapnet2aprs.  Did you forget to create it?")
+    exit(1)
+logger.info("Reading configuration file at /etc/dapnet2aprs")
 first_run = True
-linefeed = "\r\n"
-wait_time = 60
-dapnet_username = 'YOUR_DAPNET_LOGIN'
-dapnet_password = 'YOUR_DAPNET_API_PASSWORD'
-dapnet_url = 'http://www.hampager.de:8080/calls?ownerName=' +dapnet_username
-callsign = 'YOUR_CALLSIGN'
-aprs_passcode = 'YOUR_APRS_PASSCODE'
-pager_id = 'YOUR_DAPNET_RIC'
-send_to = 'APRS_CALLSIGN_TO_SEND_TO'
-db_engine = 'mysql'     #you can use either 'mysql' or 'sqlite', I didnt want sqlite hammering away at my Pi SD card, so I used my MariaDB server on my nas instead
+try:
+    wait_time = int(config['DEFAULT']['wait_time'])
+    log_path = config['DEFAULT']['log_path']
+    dapnet_username = config['DAPNET']['username']
+    dapnet_password = config['DAPNET']['password']
+    dapnet_server = config['DAPNET']['server']
+    dapnet_url = (f"http://{config['DAPNET']['server']}:8080/calls?ownerName={dapnet_username}")
+    aprs_server = config['APRS']['server']
+    callsign = config['APRS']['callsign']
+    pager_id = config['APRS']['pager_id']
+    send_to = config['APRS']['send_to']
+    db_engine = config['DATABASE']['engine']
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+    }
 
-if db_engine == 'mysql':
-  import mysql.connector
-  mysqlhost = "YOUR_MYSQL_SERVER"             #If you want to use MySQL/MariaDB, put your server info here
-  mysqluser = "MYSQL_SERVER_LOGIN"
-  mysqlpassword = "MYSQL_SERVER_PASSWORD"
-  db = "dapnet"
-else:
-  import sqlite3 as sql
-  from sqlite3 import Error
-  import os
-  db = os.path.dirname(os.path.abspath(__file__)) + "/dapnet.db"
+    if db_engine == 'mysql':
+      logger.info("MySQL database engine selected")
+      import mysql.connector
+      from mysql.connector import Error
+      mysqlhost = config['MYSQL']['host']
+      mysqluser = config['MYSQL']['user']
+      mysqlpassword = config['MYSQL']['password']
+      db = config['MYSQL']['database']
 
+    else:
+      logger.info("SQLite database engine selected")
+      import sqlite3 as sql
+      from sqlite3 import Error
+      import os
+      db = (f"{os.path.dirname(os.path.abspath(__file__))}/dapnet.db")
+except KeyError as e:
+    key = e.args[0]
+    logger.error(f"Failed to find '{e.args[0]}' value in /etc/dapnet2aprs config file")
+    raise
 
+##### Define Functions
 ##### Define SQL Functions
-def create_connection(db_file):
-    conn = None
+def create_connection(db_name):
     if db_engine == 'mysql':
     #Create connection to MySQL/MariaDB Database    
         try:
-             conn = mysql.connector.connect(
+             connection = mysql.connector.connect(
                host = mysqlhost,
                user = mysqluser,
-               password = mysqlpassword,
-               database = db_file
+               password = mysqlpassword
              )
-        except Error as e:
-             print (e)
+             logger.info(f"Connected to {mysqlhost} MySQL Database Engine {connection}")
+             return connection
+        except Exception as e:
+             logger.error (f"Failed to connect to MySQL database: {e}")
+             raise
     else:
     # Creates connection to dapnet.db SQLlite3 Database
        try:
-           conn = sql.connect(db_file)
-       except Error as e:
-           print (e)
-    return conn
+           connection = sql.connect(db_name)
+           logger.info(f"Connected to sqlite Database Engine {connection}")
+           return connection
+       except Exception as e:
+           logger.error (f"Failed to connect to sqlite database: {e}")
+           raise
 
-def exec_sql(conn,sql):
+def check_database_exists(connection, db_name):
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SHOW DATABASES")
+        databases = cursor.fetchall()
+    except Exception as e:
+        logger.error(f"Failed to execute 'SHOW DATABASES': {e}")
+        raise
+
+    for database in databases:
+        if db_name == database[0]:
+            logger.info(f"Found the {database[0]} database on {mysqlhost}.  Connecting.")
+            try:
+                connection.database = db_name
+                logger.info(f"Successfully connected to the {db_name} database on {mysqlhost} {connection}")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to connect to the {db_name} database on {mysqlhost}: {e}")
+                raise
+
+    logger.info(f"The {db_name} database was not found on {mysqlhost}, creating it.")
+    try:
+        cursor.execute(f"CREATE DATABASE {db_name}")
+        connection.database = db_name
+        create_messages_table = """CREATE TABLE IF NOT EXISTS messages (
+            text TEXT,
+            timestamp TEXT
+        );"""
+        cursor.execute(create_messages_table)
+        logger.info(f"Created the {db_name} database on {mysqlhost}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to create the {db_name} database on {mysqlhost}: {e}")
+        raise
+
+def exec_sql(connection,sql,params=None):
     # Executes SQL for Updates, inserts and deletes
-    cur = conn.cursor(buffered=True)
-    cur.execute(sql)
-    conn.commit()
+    try:
+       cur = connection.cursor(buffered=True)
+       cur.execute(sql,params)
+       connection.commit()
+       return()
+    except Excepton as e:
+       logger.error(f"Failed to execute SQL query: {e}")
+       raise
 
-def select_sql(conn,sql):
+def select_sql(connection,sql,params=None):
     # Executes SQL for Selects
-    cur = conn.cursor(buffered=True)
-    cur.execute(sql)
-    return cur.fetchall()
+    try:
+        cur = connection.cursor(buffered=True)
+        cur.execute(sql, params)
+        return cur.fetchall()
+    except Exception as e:
+        logger.error(f"Failed to execute SQL query: {e}")
+        raise
 
-def new(conn):
-# Create new database if not exists
-    if db_engine == 'mysql':
-      conn = mysql.connector.connect(
-          host = mysqlhost,
-          user = mysqluser,
-          password = mysqlpassword
-      )
-      cur = conn.cursor(buffered=True)
-      sql = "CREATE DATABASE " + db
-      cur.execute(sql)
-      sql = "USE " + db
-      cur.execute(sql)
-
-    create_message_table = """ create table if not exists messages (
-text text, 
-timestamp text
-); """
-
-    exec_sql(conn, create_message_table)
-
-    data = get_api_data()
-
-    for i in range(0,len(data)):
-        text = data[i]['text']
-        timestamp = data[i]['timestamp']
-
-        sql = "insert into messages (text, timestamp) "
-        sql = sql + "values('" + text + "','" + timestamp + "');"
-
-        exec_sql(conn, sql)
-
-
-
-##### Get API Data
+##### Get DAPNET API Data
 def get_api_data():
-    return requests.get(dapnet_url, auth=HTTPBasicAuth(dapnet_username,dapnet_password)).json()
+    logger.info(f"Getting messages from DAPNET at {dapnet_url}")
+    response = requests.get(dapnet_url, auth=HTTPBasicAuth(dapnet_username,dapnet_password), headers=headers, timeout=10).json
+    return response
 
-##### Send APRS function
+##### Define APRS functions
+def aprspass(callsign: str):
+    #This function takes a callsign from the config file, and calculates the APRS passcode.
+    stop_here = callsign.find('-')    #Strip any SSID
+    if stop_here != -1:
+        callsign = callsign[:stop_here]
+    real_call = callsign[:10].upper()
+    hash_value = 0x73e2
+    for i in range(0, len(real_call), 2):
+        hash_value ^= ord(real_call[i]) << 8
+        if i+1 < len(real_call):
+            hash_value ^= ord(real_call[i + 1])
+    passcode = hash_value & 0x7fff
+    logger.info(f"Calculated APRS passcode for {callsign} as {passcode}")
+    return passcode
+
 def send_aprs(msg):
-        try:
-              print("Forwarding for " + pager_id + " to APRS: " + msg)
-              AIS = aprslib.IS(callsign, aprs_passcode, port=14580)
-              AIS.connect()
-              AIS.sendall("DAPNET>APRS,TCPIP*::" + send_to.ljust(9) + ":" + msg)
-        except:
-            pass
+    try:
+        logger.info(f"Forwarding message for {pager_id} to APRS via {aprs_server}: {msg}")
+        AIS = aprslib.IS(aprs_server, callsign, aprs_passcode, port=14580)
+        AIS.connect()
+        AIS.sendall(f"DAPNET>APRS,TCPIP*::{send_to.ljust(9)}:{msg}")
+    except:
+        logger.error(f"Failed to send APRS message {msg}: {e}")
+        pass
 
 
 ##### Main Program
 
+# Calculate APRS Passcode
+aprs_passcode = aprspass(callsign)
+
 # check to see if the database exists. If not create it. Otherwise create a connection to it for the rest of the script
+connection = create_connection (db)
 if db_engine == 'mysql':
-     conn = mysql.connector.connect(
-          host = mysqlhost,
-          user = mysqluser,
-          password = mysqlpassword
-     )
-     cur = conn.cursor(buffered=True)
-     cur.execute("SHOW DATABASES")
-     db_exists = 0
-     for x in cur:
-        if str(x) == "('"+db+"',)":
-           sql = "USE " + db
-           cur.execute(sql)
-           db_exists = 1
-     if db_exists == 0:
-        new(conn)
-else:
-  conn = sql_connection(db)
-  if not os.path.exists(db):
-    conn = sql_connection(db)
-    new(conn)
-  else:
-    conn = sql_connection(db) 
+    check_database_exists(connection,db)
+logger.info(f"DAPNET2APRSNotifier Started and polling for incoming DAPNET messages every {wait_time} seconds.")
 
 # Check API and if the last message was not already sent, send it... else ignore it.
 try:
@@ -166,23 +210,24 @@ try:
 
             # get the data from the API
             data = get_api_data()
+            logger.info(f"Retrieved data from DAPNET: {data}")
 
             for i in range(0,len(data)):
                 text = data[i]['text']
                 timestamp = data[i]['timestamp']
 
-                sql = "select count(text) as text_cnt from messages where text = '" + text + "' and timestamp = '" + timestamp + "';"
-                result = select_sql(conn, sql)
+                sql = "select count(text) as text_cnt from messages where text = ? and timestamp = ?;"
+                params = (text, timestamp)
+                result = select_sql(connection, sql, params)
 
                 for row in result:
                     text_cnt = row[0]
 
                 if text_cnt == 0:
 
-                    sql = "insert into messages (text, timestamp) "
-                    sql = sql + "values('" + text + "','" + timestamp + "');"
-
-                    exec_sql(conn,sql)
+                    sql = "insert into messages (text, timestamp) values (?, ?);"
+                    params = (text, timestamp)
+                    exec_sql(connection, sql, params)
                     
                     # Send the message 
                     send_aprs(text)
@@ -191,5 +236,5 @@ try:
                     break
 
 except Exception as e:
-    print(str(e))
-
+    logger.error(str(e))
+    raise
