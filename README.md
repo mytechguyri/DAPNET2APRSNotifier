@@ -10,9 +10,7 @@ So... I stripped out all the other messenger services.... If you want them, DAPN
 Once I did that, I made a few other changes... DAPNETNotifier uses sqlite to keep a database of the messages its sent, and I didn't like the idea of it hammering away on an sqlite file on my SD card on my pi.... so I added the capability for it to use the MariaDB server on my NAS instead.... so now you can choose either sqlite or MariaDB
 
 Here's how to install this on a Pi-Star or WPSD system so it will run as a service behind the scenes.
-The dapnet2aprs config file should be placed in /etc/ and you should edit to customize to your configuration
-the DAPNET2APRSNotifier file should be placed in /usr/local/bin/ and be owned by user:group mmdvm:mmdvm
-the dapnet2aprs.service file should be placed in /usr/lib/systemd/system/ then enabled with sudo systemctl daemon-reload && sudo systemctl start dapnet2aprs && sudo systemctl enable dapnet2aprs
+
 
 Make sure you have OUTPUT port 8080 open on the firewall, or else you won't be able to connect to the DAPNET API.  I discovered this after trying to figure out all night why the DAPNET API wasn't working, only to find the WPSD firewall rules were defaulting to DENY on the OUTPUT chain (typically output is default ACCEPT, because folks are more concerned with what gets in, not what gets out)
 
