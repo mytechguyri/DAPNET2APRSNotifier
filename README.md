@@ -10,6 +10,8 @@ So... I stripped out all the other messenger services.... If you want them, DAPN
 Once I did that, I made a few other changes... DAPNETNotifier uses sqlite to keep a database of the messages its sent, and I didn't like the idea of it hammering away on an sqlite file on my SD card on my pi.... so I added the capability for it to use the MariaDB server on my NAS instead.... so now you can choose either sqlite or MariaDB
 
 Here's how to install this on a Pi-Star or WPSD system so it will run as a service behind the scenes.
+This program requires the following python3 modules requests, aprslib, and configparser.  The install script will attempt to install them with pip, but you may need to install manually if that doesn't work.
+
 
 github clone https://github.com/mytechguyri/DAPNET2APRSNotifier.git
 
