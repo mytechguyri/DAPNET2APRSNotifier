@@ -2,7 +2,7 @@
 #Special thanks to KR0SIV for his DAPNET2APRS program https://github.com/KR0SIV/DAPNET2APRS
 #and N8ACL for his DAPNETNotifier program https://github.com/n8acl/DAPNETNotifier  
 #on both of which this program is based
-#Copyright 2023 John Tetreault WA1OKB, released under the Gnu General Public License v3.0
+#Copyright 2023-2024 John Tetreault WA1OKB, released under the Gnu General Public License v3.0
 #
 import json
 import re
