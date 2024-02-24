@@ -7,3 +7,4 @@ sudo chown mmdvm:mmdvm /etc/dapnet2aprs
 sudo cp ./dapnet2aprs.service /usr/lib/systemd/system
 sudo systemctl daemon-reload
 sudo systemctl enable dapnet2aprs
+sudo nano /etc/dapnet2aprs
