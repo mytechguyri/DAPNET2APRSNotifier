@@ -1,15 +1,15 @@
 # DAPNET2APRSNotifier
 This is sort of a merging of DAPNET2APRS by KR0SIV and DAPNETNotifier by N8ACL
 
-At first I tried DAPNET2APRS... and while it worked at sending the messages to APRS... it was sending ALL the messages, including ones that weren't intended for me.  This seemed to be due to trying to parse the pi-star HTML for the messages, there had to be a better way.
+At first I tried DAPNET2APRS... and while it worked at sending the messages to APRS... it was sending ALL the messages, including ones that weren't intended for me.  This seemed to be due to trying to parse the pi-star HTML for the messages, there had to be a better way... 
 
 And that's where I found DAPNETNotifier... it uses the DAPNET API to get your messages..... BUT, while it will send messages to all sorts of services, it didn't have anything to send them to APRS.... 
 
-So... I stripped out all the other messenger services.... If you want them, DAPNETNotifier is a good bit of code... use it.   I then plugged in the APRS sending code from DAPNET2APRS
+So... I stripped out all the other messenger services.... If you want them, DAPNETNotifier is a good bit of code... use it.   I then plugged in the APRS sending code from DAPNET2APRS, that and some housekeeping to use a MySQL or SQLite database to keep track of what messages have been sent, and only add a message to the database once it has been sent successfully, improved error handling as well.
 
 Once I did that, I made a few other changes... DAPNETNotifier uses sqlite to keep a database of the messages its sent, and I didn't like the idea of it hammering away on an sqlite file on my SD card on my pi.... so I added the capability for it to use the MariaDB server on my NAS instead.... so now you can choose either sqlite or MariaDB
 
 The dapnet2aprs config file should be placed in /etc/ and you should edit to customize to your configuration
-the DAPNET2APRSNotifier file should be placed in /usr/local/bin/ and be owned by user:group mmdvm:mmdvm
+the DAPNET2APRSNotifier.py file should be placed in /usr/local/bin/ and be owned by user:group mmdvm:mmdvm and remove mv DAPNET2APRSNotifier.py DAPNETNotifier to get rid of the .py extension
 the dapnet2aprs.service file should be placed in /usr/lib/systemd/system/ then enabled with systemctl daemon-reload && systemctl start dapnet2aprs && systemctl enable dapnet2aprs
 
