@@ -1,17 +1,17 @@
 #Place this file in /etc/dapnet2aprs
 [DEFAULT]
-wait_time = 60                                  #This is the minimum time between polls of DAPNET.  values less than 60 are ignored.
+wait_time = 60                                  #This is the minimum time between polls of DAPNET.  values less than 60 are ignored.  We don't want to hammer the server and get rate limited.
 log_path = /var/log/pi-star/DAPNET2APRS.log     #Path where the program will write its log files
 
 [DAPNET]
-server = hampager.de                            #DAPNET API Server
+server = hampager.de                            #DAPNET API Server, will use port 8080 automatically
 username =                                      #Your call sign
 password =                                      #Your DAPNET API Key
 pager_id =                                      #Your DAPNET pager RIC
 
 [APRS]
 server = rotate.aprs.net                        #Your preferred APRS Server
-callsign =                                      #Your callsign
+callsign =                                      #Your callsign (you can use an SSID here, such as -R, this will show where the APRS message originated)
 send_to =                                       #Callsign and SSID you want the message sent to on APRS
 
 [DATABASE]
