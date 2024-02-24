@@ -1,0 +1,11 @@
+[Unit]
+Description=DAPNET2APRS Service
+After=syslog.target network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/DAPNET2APRSNotifier
+User=mmdvm
+
+[Install]
+WantedBy=multi-user.target
