@@ -40,10 +40,10 @@ try:
     dapnet_username = config['DAPNET']['username']
     dapnet_password = config['DAPNET']['password']
     dapnet_server = config['DAPNET']['server']
+    pager_id = config['DAPNET']['pager_id']
     dapnet_url = (f"http://{config['DAPNET']['server']}:8080/calls?ownerName={dapnet_username}")
     aprs_server = config['APRS']['server']
     callsign = config['APRS']['callsign']
-    pager_id = config['APRS']['pager_id']
     send_to = config['APRS']['send_to']
     db_engine = config['DATABASE']['engine']
     headers = {
