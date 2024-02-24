@@ -9,4 +9,7 @@ So... I stripped out all the other messenger services.... If you want them, DAPN
 
 Once I did that, I made a few other changes... DAPNETNotifier uses sqlite to keep a database of the messages its sent, and I didn't like the idea of it hammering away on an sqlite file on my SD card on my pi.... so I added the capability for it to use the MariaDB server on my NAS instead.... so now you can choose either sqlite or MariaDB
 
+The dapnet2aprs file should be placed in /etc/ and you should edit to customize to your configuration
+the DAPNET2APRSNotifier file should be placed in /usr/local/bin/ and be owned by user:group mmdvm:mmdvm
+the dapnet2aprs.service file should be placed in /usr/lib/systemd/system/ then enabled with systemctl daemon-reload && systemctl start dapnet2aprs && systemctl enable dapnet2aprs
 
