@@ -1,4 +1,5 @@
 #!/bin/bash
+pip install requests aprslib configparser
 sudo cp ./DAPNET2APRSNotifier /usr/local/bin/DAPNET2APRSNotifier
 sudo chown mmdvm:mmdvm /usr/local/bin/DAPNET2APRSNotifier
 sudo chmod +x /usr/local/bin/DAPNET2APRSNotifier
