@@ -78,8 +78,6 @@ except KeyError as e:
 # Define Functions
 
 # Define SQL Functions
-
-
 def create_connection(db_name):
     if db_engine == 'mysql':
         # Create connection to MySQL/MariaDB Database
@@ -170,8 +168,6 @@ def select_sql(connection, sql):
         raise
 
 # Get DAPNET API Data
-
-
 def get_api_data():
     response = requests.get(
         dapnet_url,
@@ -184,8 +180,6 @@ def get_api_data():
 
 # Define APRS functions
 # Calculate APRS Passcode from callsign function
-
-
 def aprspass(callsign: str):
     stop_here = callsign.find('-')
     if stop_here != -1:
@@ -202,25 +196,29 @@ def aprspass(callsign: str):
     return passcode
 
 # Send APRS Message function
-
-
 def send_aprs(msg):
     try:
-        recipient = str(send_to.ljust(9))
-        logger.info(
-            f"Forwarding message for {pager_id} to {recipient}@APRS via {aprs_server}: {msg}")
-        AIS = aprslib.IS(str(callsign), passwd=str(aprs_passcode), host=str(aprs_server), port=14580)
-        AIS.connect()
-        AIS.sendall(f"DAPNET>APRS,TCPIP*,qAR::{recipient}:{msg}")
+        if len(msg) > 61:
+            split_index = msg.rfind(' ', 0, 61)
+            if split_index == -1:  # No space found, split at 61
+                split_index = 61
+            messages = [msg[:split_index], msg[split_index:].lstrip()]
+        else:
+            messages = [msg]
+        for message in messages:
+            logger.info(
+                f"Forwarding message for {pager_id} to {send_to}@APRS via {aprs_server}: {message}")
+            AIS = aprslib.IS(str(callsign), passwd=str(aprs_passcode), host=str(aprs_server), port=14580)
+            AIS.connect()
+            AIS.sendall(f"DAPNET>APRS,TCPIP*::{send_to.ljust(9)}:MSG [{message}]")
         return True
     except Exception as e:
         logger.error(f"Failed to send APRS message {msg}: {e}")
         return False
-        pass
 
 # Main Program
 
-# Calculate APRS Passcode
+#Call the function to calculate the APRS passcode
 aprs_passcode = aprspass(callsign)
 
 # check to see if the database exists. If not create it. Otherwise create
