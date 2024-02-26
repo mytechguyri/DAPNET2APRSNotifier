@@ -92,7 +92,6 @@ def create_connection(db_name):
                     f"Connected to {mysqlhost} MySQL Database Engine {connection}")
                 break
             except Exception as e:
-                logger.error(f"Failed to connect to MySQL database: {e}")
                 if attempt < MAX_RETRIES -1:
                     logger.warning(f"Failed to connect to MySQL database at {mysqlhost}: {3} - Retrying...")
                     time.sleep(RETRY_DELAY)
