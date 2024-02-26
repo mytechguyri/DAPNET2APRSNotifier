@@ -15,7 +15,6 @@ import aprslib
 import logging
 import configparser
 from requests.auth import HTTPBasicAuth
-from os import system, name
 from time import sleep
 
 # Setup logging
@@ -80,17 +79,23 @@ except KeyError as e:
 def create_connection(db_name):
     if db_engine == 'mysql':
         # Create connection to MySQL/MariaDB Database
-        try:
-            connection = mysql.connector.connect(
-                host=mysqlhost,
-                user=mysqluser,
-                password=mysqlpassword
-            )
-            logger.info(
-                f"Connected to {mysqlhost} MySQL Database Engine {connection}")
-        except Exception as e:
-            logger.error(f"Failed to connect to MySQL database: {e}")
-            raise
+        MAX_RETRIES = 5
+        RETRY_DELAY = 5
+        for attempt in range(MAX_RETRIES):
+            try:
+                connection = mysql.connector.connect(
+                    host=mysqlhost,
+                    user=mysqluser,
+                    password=mysqlpassword
+                )
+                logger.info(
+                    f"Connected to {mysqlhost} MySQL Database Engine {connection}")
+                break
+            except Exception as e:
+                logger.error(f"Failed to connect to MySQL database: {e}")
+                if attempt == MAX_RETRIES -1:
+                    raise
+                time.sleep(RETRY_DELAY)
         try:
             cursor = connection.cursor()
             cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_name}")
@@ -98,6 +103,7 @@ def create_connection(db_name):
             logger.info(f"Successfully connected to the {db_name} database on {mysqlhost} {connection}")
         except Exception as e:
             logger.error(f"Failed to create the {db_name} database on {mysqlhost}: {e}")
+            connection.close()
             raise
         try:
             cursor.execute("""CREATE TABLE IF NOT EXISTS messages (
@@ -108,6 +114,7 @@ def create_connection(db_name):
             logger.info(f"Successfully connected to the 'messages' table in the {db_name} database on {mysqlhost}")
         except Exception as e:
             logger.error(f"Failed to create the 'messages' table in the {db_name} database on {mysqlhost}: {e}")
+            connection.close()
             raise
     else:
         # Creates connection to dapnet.db SQLlite3 Database
@@ -128,6 +135,7 @@ def create_connection(db_name):
             logger.info(f"Successfully connected to the 'messages' table in the {db_name} SQLite database")
         except Exception as e:
             logger.error(f"Failed to create the 'messages' table in the {db_name} SQLite database: {e}")
+            connection.close()
             raise
 
     return connection
@@ -141,6 +149,7 @@ def exec_sql(connection, sql):
         return ()
     except Excepton as e:
         logger.error(f"Failed to execute SQL query: {e}")
+        connection.close()
         raise
 
 
@@ -152,6 +161,7 @@ def select_sql(connection, sql):
         return cur.fetchall()
     except Exception as e:
         logger.error(f"Failed to execute SQL query: {e}")
+        connection.close()
         raise
 
 # Get DAPNET API Data
@@ -200,7 +210,7 @@ def send_aprs(msg):
             AIS.sendall(f"DAPNET>APRS,TCPIP*::{send_to.ljust(9)}:MSG [{message}]")
         return True
     except Exception as e:
-        logger.error(f"Failed to send APRS message {msg}: {e}")
+        logger.error(f"Failed to send APRS message {msg}: {e}  Will keep trying.")
         return False
 
 # Main Program
@@ -261,9 +271,7 @@ try:
                                 f"insert into messages (text, timestamp) values ('{text}','{timestamp}');")
                             exec_sql(connection, sql)
                     sendmessage = False
-
-
-
 except Exception as e:
     logger.error(str(e))
+    connection.close()
     raise
