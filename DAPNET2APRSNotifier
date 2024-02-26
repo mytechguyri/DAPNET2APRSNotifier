@@ -96,7 +96,7 @@ def create_connection(db_name):
                     logger.warning(f"Failed to connect to MySQL database at {mysqlhost}: {3} - Retrying...")
                     time.sleep(RETRY_DELAY)
                 else:
-                    logger.error(f"Failed to connect to MySQL database at {mysqlhost}: {3} - I'm giving up."
+                    logger.error(f"Failed to connect to MySQL database at {mysqlhost}: {3} - I'm giving up.")
                     raise
         try:
             cursor = connection.cursor()
