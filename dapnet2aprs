@@ -7,7 +7,7 @@ log_path = /var/log/pi-star/DAPNET2APRS.log     #Path where the program will wri
 server = hampager.de                            #DAPNET API Server, will use port 8080 automatically
 username =                                      #Your call sign
 password =                                      #Your DAPNET API Key
-emergency_only = False                          #If set to True, only pages marked "emergency" will be forwarded to APRS, otherwise all pages will be forwarded
+emergency_only = False                          #If set to True, only pages flagged as emergency in DAPNET be forwarded to APRS, otherwise all pages will be forwarded
 
 [APRS]
 server = rotate.aprs.net                        #Your preferred APRS Server
