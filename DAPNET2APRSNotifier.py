@@ -15,7 +15,6 @@ import aprslib
 import logging
 import configparser
 from requests.auth import HTTPBasicAuth
-from os import system, name
 from time import sleep
 
 # Setup logging
@@ -67,8 +66,7 @@ try:
         logger.info("SQLite database engine selected")
         import sqlite3 as sql
         from sqlite3 import Error
-        import os
-        db = (f"{os.path.dirname(os.path.abspath(__file__))}/dapnet.db")
+        db = (f"/home/mmdvm/dapnet.db")
 except KeyError as e:
     key = e.args[0]
     logger.error(
@@ -89,61 +87,49 @@ def create_connection(db_name):
             )
             logger.info(
                 f"Connected to {mysqlhost} MySQL Database Engine {connection}")
-            return connection
         except Exception as e:
             logger.error(f"Failed to connect to MySQL database: {e}")
+            raise
+        try:
+            cursor = connection.cursor()
+            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_name}")
+            connection.database = db_name
+            logger.info(f"Successfully connected to the {db_name} database on {mysqlhost} {connection}")
+        except Exception as e:
+            logger.error(f"Failed to create the {db_name} database on {mysqlhost}: {e}")
+            raise
+        try:
+            cursor.execute("""CREATE TABLE IF NOT EXISTS messages (
+                text VARCHAR(80),
+                timestamp CHAR(27) NOT NULL,
+                PRIMARY KEY (timestamp)
+            );""")
+            logger.info(f"Successfully connected to the 'messages' table in the {db_name} database on {mysqlhost}")
+        except Exception as e:
+            logger.error(f"Failed to create the 'messages' table in the {db_name} database on {mysqlhost}: {e}")
             raise
     else:
         # Creates connection to dapnet.db SQLlite3 Database
         try:
             connection = sql.connect(db_name)
-            logger.info(f"Connected to sqlite Database Engine {connection}")
-            return connection
+            cursor = connection.cursor()
+            logger.info(f"Connected to SQLite Database Engine {connection}")
         except Exception as e:
-            logger.error(f"Failed to connect to sqlite database: {e}")
+            logger.error(f"Failed to connect to the {db_name} SQLite database: {e}")
+            raise
+        # Create the 'messages' table
+        try:
+            cursor.execute("""CREATE TABLE IF NOT EXISTS messages (
+                text VARCHAR(80),
+                timestamp CHAR(27) NOT NULL,
+                PRIMARY KEY (timestamp)
+            );""")
+            logger.info(f"Successfully connected to the 'messages' table in the {db_name} SQLite database")
+        except Exception as e:
+            logger.error(f"Failed to create the 'messages' table in the {db_name} SQLite database: {e}")
             raise
 
-
-def check_database_exists(connection, db_name):
-    try:
-        cursor = connection.cursor()
-        cursor.execute("SHOW DATABASES")
-        databases = cursor.fetchall()
-    except Exception as e:
-        logger.error(f"Failed to execute 'SHOW DATABASES': {e}")
-        raise
-
-    for database in databases:
-        if db_name == database[0]:
-            logger.info(
-                f"Found the {database[0]} database on {mysqlhost}.  Connecting.")
-            try:
-                connection.database = db_name
-                logger.info(
-                    f"Successfully connected to the {db_name} database on {mysqlhost} {connection}")
-                return True
-            except Exception as e:
-                logger.error(
-                    f"Failed to connect to the {db_name} database on {mysqlhost}: {e}")
-                raise
-
-    logger.info(
-        f"The {db_name} database was not found on {mysqlhost}, creating it.")
-    try:
-        cursor.execute(f"CREATE DATABASE {db_name}")
-        connection.database = db_name
-        create_messages_table = """CREATE TABLE IF NOT EXISTS messages (
-            text TEXT,
-            timestamp TEXT
-        );"""
-        cursor.execute(create_messages_table)
-        logger.info(f"Created the {db_name} database on {mysqlhost}")
-        return True
-    except Exception as e:
-        logger.error(
-            f"Failed to create the {db_name} database on {mysqlhost}: {e}")
-        raise
-
+    return connection
 
 def exec_sql(connection, sql):
     # Executes SQL for Updates, inserts and deletes
@@ -224,8 +210,6 @@ aprs_passcode = aprspass(callsign)
 # check to see if the database exists. If not create it. Otherwise create
 # a connection to it for the rest of the script
 connection = create_connection(db)
-if db_engine == 'mysql':
-    check_database_exists(connection, db)
 
 # Check API and if the last message was not already sent, send it... else
 # ignore it.
