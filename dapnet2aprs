@@ -7,7 +7,7 @@ log_path = /var/log/pi-star/DAPNET2APRS.log     #Path where the program will wri
 server = hampager.de                            #DAPNET API Server, will use port 8080 automatically
 username =                                      #Your call sign
 password =                                      #Your DAPNET API Key
-pager_id =                                      #Your DAPNET pager RIC
+emergency_only = False                          #If set to True, only pages marked "emergency" will be forwarded to APRS, otherwise all pages will be forwarded
 
 [APRS]
 server = rotate.aprs.net                        #Your preferred APRS Server
@@ -15,10 +15,8 @@ callsign =                                      #Your callsign (you can use an S
 send_to =                                       #Callsign and SSID you want the message sent to on APRS
 
 [DATABASE]
-engine = sqlite                                 #Valid values are mysql or sqlite
-
-[MYSQL]
-host =                                          #IP Address or hostname of your MySQL server if using MySQL
-user =                                          #MySQL user ID
-password =                                      #MySQL Password
-database =                                      #Database name you want to store pager messages in.  If it does not exist the program will create it.
+engine = sqlite                                       #Valid values are mysql or sqlite
+host =                                          #IP Address or hostname of your MySQL server if using MySQL, leave blank if using SQLite
+user =                                          #MySQL user ID leave blank if using SQLite
+password =                                      #MySQL Password leave blank if using SQLite
+database = /home/mmdvm/dapnet.db                #Use database name for MySQL/MariaDB or, if using SQLite, use full path to db file.  If it does not exist the program will create it.
