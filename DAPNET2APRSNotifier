@@ -15,6 +15,7 @@ import aprslib
 import logging
 import configparser
 from requests.auth import HTTPBasicAuth
+from os import system, name
 from time import sleep
 
 # Setup logging
@@ -42,7 +43,7 @@ try:
     dapnet_username = config['DAPNET']['username']
     dapnet_password = config['DAPNET']['password']
     dapnet_server = config['DAPNET']['server']
-    pager_id = config['DAPNET']['pager_id']
+    dapnet_emergency = config.getboolean('DAPNET','emergency_only')
     dapnet_url = (
         f"http://{config['DAPNET']['server']}:8080/calls?ownerName={dapnet_username}")
     aprs_server = config['APRS']['server']
@@ -57,16 +58,16 @@ try:
         logger.info("MySQL database engine selected")
         import mysql.connector
         from mysql.connector import Error
-        mysqlhost = config['MYSQL']['host']
-        mysqluser = config['MYSQL']['user']
-        mysqlpassword = config['MYSQL']['password']
-        db = config['MYSQL']['database']
+        mysqlhost = config['DATABASE']['host']
+        mysqluser = config['DATABASE']['user']
+        mysqlpassword = config['DATABASE']['password']
+        db = config['DATABASE']['database']
 
     else:
         logger.info("SQLite database engine selected")
         import sqlite3 as sql
         from sqlite3 import Error
-        db = (f"/home/mmdvm/dapnet.db")
+        db = config['DATABASE']['database']
 except KeyError as e:
     key = e.args[0]
     logger.error(
@@ -193,7 +194,7 @@ def send_aprs(msg):
             messages = [msg]
         for message in messages:
             logger.info(
-                f"Forwarding message for {pager_id} to {send_to}@APRS via {aprs_server}: {message}")
+                f"Forwarding message for {send_to} to APRS via {aprs_server}: {message}")
             AIS = aprslib.IS(str(callsign), passwd=str(aprs_passcode), host=str(aprs_server), port=14580)
             AIS.connect()
             AIS.sendall(f"DAPNET>APRS,TCPIP*::{send_to.ljust(9)}:MSG [{message}]")
@@ -214,7 +215,7 @@ connection = create_connection(db)
 # Check API and if the last message was not already sent, send it... else
 # ignore it.
 logger.info(
-    f"DAPNET2APRSNotifier Started and polling for incoming DAPNET messages every {wait_time} seconds.")
+    f"DAPNET2APRSNotifier Started and polling for incoming DAPNET messages for {send_to} every {wait_time} seconds.")
 
 try:
     while True:
@@ -233,26 +234,35 @@ try:
             for i in range(0, len(data)):
                 text = data[i]['text']
                 timestamp = data[i]['timestamp']
+                emergency = data[i]['emergency']
 
-                sql = (
-                    f"select count(text) as text_cnt from messages where text = '{text}' and timestamp = '{timestamp}';")
-                result = select_sql(connection, sql)
-
-                for row in result:
-                    text_cnt = row[0]
-
-                if text_cnt == 0:
-
-                    #send the message
-                    sent = send_aprs(text)
-                    #add to sent messages if successful
-                    if sent:
+                if dapnet_emergency:
+                    if emergency:
+                        sendmessage = True
                         sql = (
-                            f"insert into messages (text, timestamp) values ('{text}','{timestamp}');")
-                        exec_sql(connection, sql)
+                            f"select count(text) as text_cnt from messages where text = '{text}' and timestamp = '{timestamp}';")
+                        result = select_sql(connection, sql)
+                    else:
+                        sendmessage = False
+                else:
+                    sendmessage = True
+                if sendmessage:
+                    sql = (
+                        f"select count(text) as text_cnt from messages where text = '{text}' and timestamp = '{timestamp}';")
+                    result = select_sql(connection, sql)
+                    for row in result:
+                        text_cnt = row[0]
+                    if text_cnt == 0:
+                        #send the message
+                        sent = send_aprs(text)
+                        #add to sent messages if successful
+                        if sent:
+                            sql = (
+                                f"insert into messages (text, timestamp) values ('{text}','{timestamp}');")
+                            exec_sql(connection, sql)
+                    sendmessage = False
 
 
-                    break
 
 except Exception as e:
     logger.error(str(e))
