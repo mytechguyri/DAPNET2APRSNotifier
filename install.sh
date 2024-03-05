@@ -1,6 +1,6 @@
 #!/bin/bash
 sudo apt-get -y install python3-pip
-pip install -r requirements.txt
+sudo pip install -r requirements.txt
 sudo cp ./DAPNET2APRSNotifier /usr/local/bin/DAPNET2APRSNotifier
 sudo chown mmdvm:mmdvm /usr/local/bin/DAPNET2APRSNotifier
 sudo chmod +x /usr/local/bin/DAPNET2APRSNotifier
