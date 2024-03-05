@@ -4,6 +4,7 @@ After=syslog.target network.target
 
 [Service]
 Type=simple
+ExecStartPre=/sbin/iptables -A OUTPUT -p tcp --dport 8080 -j ACCEPT
 ExecStart=/usr/local/bin/DAPNET2APRSNotifier
 User=mmdvm
 
