@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements.in
 #
-aprslib==0.7.2
+mysql-connector-python==8.3.0
     # via -r requirements.in
 certifi==2024.2.2
     # via requests
