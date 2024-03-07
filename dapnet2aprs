@@ -5,8 +5,8 @@ log_path = /var/log/pi-star/DAPNET2APRS.log     #Path where the program will wri
 
 [DAPNET]
 server = hampager.de                            #DAPNET API Server, will use port 8080 automatically
-username =                                      #Your call sign
-password =                                      #Your DAPNET API Key
+username = pistar                               #Your call sign.  If you are using pi-star or wpsd, you can just put 'pistar' here, will pull from config file
+password = pistar                               #Your DAPNET API Key.  If you are using pi-star or wpsd, you can just put 'pistar' here, will pull from config file
 emergency_only = False                          #If set to True, only pages flagged as emergency in DAPNET be forwarded to APRS, otherwise all pages will be forwarded
 
 [APRS]
@@ -15,7 +15,7 @@ callsign =                                      #Your callsign (you can use an S
 send_to =                                       #Callsign and SSID you want the message sent to on APRS
 
 [DATABASE]
-engine = sqlite                                       #Valid values are mysql or sqlite
+engine = sqlite                                 #Valid values are mysql or sqlite
 host =                                          #IP Address or hostname of your MySQL server if using MySQL, leave blank if using SQLite
 user =                                          #MySQL user ID leave blank if using SQLite
 password =                                      #MySQL Password leave blank if using SQLite
