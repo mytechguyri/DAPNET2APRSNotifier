@@ -5,8 +5,8 @@ log_path = /var/log/pi-star/DAPNET2APRS.log     #Path where the program will wri
 
 [DAPNET]
 server = hampager.de                            #DAPNET API Server, will use port 8080 automatically
-username = pistar                               #Your call sign.  If you are using pi-star or wpsd, you can just put 'pistar' here, will pull from config file
-password = pistar                               #Your DAPNET API Key.  If you are using pi-star or wpsd, you can just put 'pistar' here, will pull from config file
+username =                                      #Your call sign.  If you are using pi-star or wpsd, leave blank, will pull from pi-star or wpsd config file
+password =                                      #Your DAPNET API Key.  If you are using pi-star or wpsd, leave blank, will pull from pi-star or wpsd config file
 emergency_only = False                          #If set to True, only pages flagged as emergency in DAPNET be forwarded to APRS, otherwise all pages will be forwarded
 
 [APRS]
