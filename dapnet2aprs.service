@@ -6,6 +6,7 @@ After=syslog.target network.target
 Type=simple
 PermissionsStartOnly=true
 ExecStartPre=/sbin/iptables -A OUTPUT -p tcp --dport 8080 -j ACCEPT
+ExecStartPre=/sbin/iptables -A OUTPUT -p tcp --dport 3306 -j ACCEPT
 ExecStart=/usr/local/bin/DAPNET2APRSNotifier
 User=mmdvm
 
