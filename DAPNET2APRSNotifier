@@ -15,6 +15,7 @@ import aprslib
 import logging
 import configparser
 from requests.auth import HTTPBasicAuth
+from requests.exceptions import RequestException
 from time import sleep
 
 # Setup logging
@@ -28,14 +29,14 @@ logger.addHandler(handler)
 
 # Read Config file and set variables
 logger.info("Starting DAPNET2APRSNotifier...")
-config = configparser.ConfigParser()
+config = configparser.ConfigParser(inline_comment_prefixes='#')
 read_config = config.read('/etc/dapnet2aprs')
 if not read_config:
     logger.error(
         "Failed to read the config file at /etc/dapnet2aprs.  Did you forget to create it?")
     exit(1)
 logger.info("Reading configuration file at /etc/dapnet2aprs")
-first_run = True
+
 try:
     wait_time = int(config['DEFAULT']['wait_time'])
     log_path = config['DEFAULT']['log_path']
@@ -43,8 +44,6 @@ try:
     dapnet_password = config['DAPNET']['password']
     dapnet_server = config['DAPNET']['server']
     dapnet_emergency = config.getboolean('DAPNET','emergency_only')
-    dapnet_url = (
-        f"http://{config['DAPNET']['server']}:8080/calls?ownerName={dapnet_username}")
     aprs_server = config['APRS']['server']
     callsign = config['APRS']['callsign']
     send_to = config['APRS']['send_to']
@@ -73,6 +72,19 @@ except KeyError as e:
         f"Failed to find '{e.args[0]}' value in /etc/dapnet2aprs config file")
     raise
 
+if not dapnet_username or not dapnet_password:
+    try:
+        pistar_config = configparser.ConfigParser()
+        read_pistar_config = pistar_config.read('/etc/dapnetapi.key')
+        dapnet_username = pistar_config['DAPNETAPI']['USER']
+        dapnet_password = pistar_config['DAPNETAPI']['PASS']
+        logger.info(f"Got DAPNET credentials from dapnetapi.key file")
+    except KeyError as e:
+        key = e.args[0]
+        logger.error(f"Failed to find '{e.args[0]}' value in /etc/dapnetapi.key")
+        raise
+dapnet_url = (f"http://{config['DAPNET']['server']}:8080/calls?ownerName={dapnet_username}")
+
 # Define Functions
 
 # Define SQL Functions
@@ -89,7 +101,7 @@ def create_connection(db_name):
                     password=mysqlpassword
                 )
                 logger.info(
-                    f"Connected to {mysqlhost} MySQL Database Engine {connection}")
+                    f"Connected to {mysqlhost} MySQL compatible database engine {connection}")
                 break
             except Exception as e:
                 if attempt < MAX_RETRIES -1:
@@ -168,14 +180,22 @@ def select_sql(connection, sql):
 
 # Get DAPNET API Data
 def get_api_data():
-    response = requests.get(
-        dapnet_url,
-        auth=HTTPBasicAuth(
-            dapnet_username,
-            dapnet_password),
-        headers=headers,
-        timeout=10).json()
-    return response
+    try:
+        response = requests.get(
+            dapnet_url,
+            auth=HTTPBasicAuth(
+                dapnet_username,
+                dapnet_password),
+            headers=headers,
+            timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except RequestException as e:
+        errormsg = json.loads(response.text)
+        e_n = errormsg.get('name')
+        e_m = errormsg.get('message')
+        logger.error(f"Failed to connect to {dapnet_url}:  {response.status_code} {e_n} {e_m}")
+        return None
 
 # Define APRS functions
 # Calculate APRS Passcode from callsign function
@@ -227,22 +247,12 @@ connection = create_connection(db)
 # Check API and if the last message was not already sent, send it... else
 # ignore it.
 logger.info(
-    f"DAPNET2APRSNotifier Started and polling for incoming DAPNET messages for {send_to} every {wait_time} seconds.")
+    f"DAPNET2APRSNotifier Started and polling {dapnet_url} for incoming DAPNET messages every {wait_time} seconds.")
 
-try:
-    while True:
-        if first_run:  # If this is the first run, don't send anything
-            first_run = False
-        else:
-            # Wait the check time to not pound the API and get rate Limited
-            if wait_time < 60:
-                sleep(60)
-            else:
-                sleep(wait_time)
-
-            # get the data from the API
-            data = get_api_data()
-
+while True:
+    try:
+        data = get_api_data()
+        if data:
             for i in range(0, len(data)):
                 text = data[i]['text']
                 timestamp = data[i]['timestamp']
@@ -273,7 +283,11 @@ try:
                                 f"insert into messages (text, timestamp) values ('{text}','{timestamp}');")
                             exec_sql(connection, sql)
                     sendmessage = False
-except Exception as e:
-    logger.error(str(e))
-    connection.close()
-    raise
+        if wait_time < 60:
+            sleep(60)
+        else:
+            sleep(wait_time)
+    except Exception as e:
+        logger.error(str(e))
+        connection.close()
+        raise
