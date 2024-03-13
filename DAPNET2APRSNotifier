@@ -114,7 +114,6 @@ def create_connection(db_name):
             cursor = connection.cursor()
             cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_name}")
             connection.database = db_name
-            logger.info(f"Successfully connected to the {db_name} database on {mysqlhost} {connection}")
         except Exception as e:
             logger.error(f"Failed to create the {db_name} database on {mysqlhost}: {e}")
             connection.close()
@@ -125,7 +124,7 @@ def create_connection(db_name):
                 timestamp CHAR(27) NOT NULL,
                 PRIMARY KEY (timestamp)
             );""")
-            logger.info(f"Successfully connected to the 'messages' table in the {db_name} database on {mysqlhost}")
+            logger.info(f"Successfully connected to the {db_name} database on {mysqlhost} {connection}")
         except Exception as e:
             logger.error(f"Failed to create the 'messages' table in the {db_name} database on {mysqlhost}: {e}")
             connection.close()
@@ -146,7 +145,6 @@ def create_connection(db_name):
                 timestamp CHAR(27) NOT NULL,
                 PRIMARY KEY (timestamp)
             );""")
-            logger.info(f"Successfully connected to the 'messages' table in the {db_name} SQLite database")
         except Exception as e:
             logger.error(f"Failed to create the 'messages' table in the {db_name} SQLite database: {e}")
             connection.close()
@@ -162,7 +160,7 @@ def exec_sql(connection, sql):
         connection.commit()
         return ()
     except Excepton as e:
-        logger.error(f"Failed to execute SQL query: {e}")
+        logger.error(f"Failed to execute SQL update: {e}")
         connection.close()
         raise
 
