@@ -5,10 +5,11 @@ After=syslog.target network.target
 [Service]
 Type=simple
 PermissionsStartOnly=true
-ExecStartPre=/sbin/iptables -A OUTPUT -p tcp --dport 8080 -j ACCEPT
-ExecStartPre=/sbin/iptables -A OUTPUT -p tcp --dport 3306 -j ACCEPT
+ExecStartPre=/bin/bash -c '/sbin/iptables -D OUTPUT -p tcp --dport 8080 -j ACCEPT; /sbin/iptables -A OUTPUT -p tcp --dport 8080 -j ACCEPT'
+ExecStartPre=/bin/bash -c '/sbin/iptables -D OUTPUT -p tcp --dport 3306 -j ACCEPT; /sbin/iptables -A OUTPUT -p tcp --dport 3306 -j ACCEPT'
 ExecStart=/usr/local/bin/DAPNET2APRSNotifier
 User=mmdvm
 
 [Install]
 WantedBy=multi-user.target
+
