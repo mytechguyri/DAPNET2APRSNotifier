@@ -21,7 +21,7 @@ cd DAPNET2APRSNotifier
 
 Then complete the config in the /etc/dapnet2aprs file and start the dapnet2aprs service.
 
-Make sure you have OUTPUT port 8080 open on the firewall, or else you won't be able to connect to the DAPNET API (the dapnet2aprs.service systemd service file will open the necessary ports on startup).
+Make sure you have OUTPUT port 8080 open on the firewall, or else you won't be able to connect to the DAPNET API (the dapnet2aprs.service systemd service file will open the necessary ports on startup, so that is of course the recommended way to start the program).
 
 This is of course a work in progress, so if you have any problems, please feel free to email me john at wa1okb.radio
 
