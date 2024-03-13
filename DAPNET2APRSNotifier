@@ -180,6 +180,7 @@ def select_sql(connection, sql):
 
 # Get DAPNET API Data
 def get_api_data():
+    response = None
     try:
         response = requests.get(
             dapnet_url,
