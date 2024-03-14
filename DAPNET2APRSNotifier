@@ -90,7 +90,6 @@ dapnet_url = (f"http://{config['DAPNET']['server']}:8080/calls?ownerName={dapnet
 # Define SQL Functions
 def create_connection(db_name):
     if db_engine == 'mysql':
-        # Create connection to MySQL/MariaDB Database
         MAX_RETRIES = 5
         RETRY_DELAY = 5
         for attempt in range(MAX_RETRIES):
@@ -130,7 +129,6 @@ def create_connection(db_name):
             connection.close()
             raise
     else:
-        # Creates connection to dapnet.db SQLlite3 Database
         try:
             connection = sql.connect(db_name)
             cursor = connection.cursor()
@@ -138,7 +136,6 @@ def create_connection(db_name):
         except Exception as e:
             logger.error(f"Failed to connect to the {db_name} SQLite database: {e}")
             raise
-        # Create the 'messages' table
         try:
             cursor.execute("""CREATE TABLE IF NOT EXISTS messages (
                 text VARCHAR(80),
@@ -153,7 +150,6 @@ def create_connection(db_name):
     return connection
 
 def exec_sql(connection, sql):
-    # Executes SQL for Updates, inserts and deletes
     try:
         cur = connection.cursor()
         cur.execute(sql)
@@ -166,7 +162,6 @@ def exec_sql(connection, sql):
 
 
 def select_sql(connection, sql):
-    # Executes SQL for Selects
     try:
         cur = connection.cursor()
         cur.execute(sql)
@@ -178,29 +173,29 @@ def select_sql(connection, sql):
 
 # Get DAPNET API Data
 def get_api_data():
-    response = None
-    try:
-        response = requests.get(
-            dapnet_url,
-            auth=HTTPBasicAuth(
-                dapnet_username,
-                dapnet_password),
-            headers=headers,
-            timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except RequestException as e:
-        if response:
-           errormsg = json.loads(response.text)
-           e_n = errormsg.get('name')
-           e_m = errormsg.get('message')
-           logger.error(f"Failed to connect to {dapnet_url}:  {response.status_code} {e_n} {e_m}")
-        else:
-           logger.error(f"Failed to connect to {dapnet_url}")
-        return None
+    while True:
+        response = None
+        try:
+            response = requests.get(
+                dapnet_url,
+                auth=HTTPBasicAuth(
+                    dapnet_username,
+                    dapnet_password),
+                headers=headers,
+                timeout=10)
+            response.raise_for_status()
+            return response.json()
+        except RequestException as e:
+            if response:
+               errormsg = json.loads(response.text)
+               e_n = errormsg.get('name')
+               e_m = errormsg.get('message')
+               logger.error(f"Failed to connect to {dapnet_url}:  {response.status_code} {e_n} {e_m}, retrying...")
+            else:
+               logger.error(f"Failed to connect to {dapnet_url}, retrying...")
+            sleep(wait_time)
 
 # Define APRS functions
-# Calculate APRS Passcode from callsign function
 def aprspass(callsign: str):
     stop_here = callsign.find('-')
     if stop_here != -1:
@@ -216,13 +211,12 @@ def aprspass(callsign: str):
     logger.info(f"Calculated APRS passcode for {callsign} as {passcode}")
     return passcode
 
-# Send APRS Message function
 def send_aprs(msg):
     try:
-        if len(msg) > 61:
-            split_index = msg.rfind(' ', 0, 61)
-            if split_index == -1:  # No space found, split at 61
-                split_index = 61
+        if len(msg) > 60:
+            split_index = msg.rfind(' ', 0, 60)
+            if split_index == -1:
+                split_index = 60
             messages = [msg[:split_index], msg[split_index:].lstrip()]
         else:
             messages = [msg]
@@ -239,17 +233,9 @@ def send_aprs(msg):
 
 # Main Program
 
-#Call the function to calculate the APRS passcode
 aprs_passcode = aprspass(callsign)
-
-# check to see if the database exists. If not create it. Otherwise create
-# a connection to it for the rest of the script
 connection = create_connection(db)
-
-# Check API and if the last message was not already sent, send it... else
-# ignore it.
-logger.info(
-    f"DAPNET2APRSNotifier Started and polling {dapnet_url} for incoming DAPNET messages every {wait_time} seconds.")
+logger.info(f"DAPNET2APRSNotifier Started and polling {dapnet_url} for incoming DAPNET messages every {wait_time} seconds.")
 
 while True:
     try:
@@ -259,30 +245,22 @@ while True:
                 text = data[i]['text']
                 timestamp = data[i]['timestamp']
                 emergency = data[i]['emergency']
-
                 if dapnet_emergency:
                     if emergency:
                         sendmessage = True
-                        sql = (
-                            f"select count(text) as text_cnt from messages where text = '{text}' and timestamp = '{timestamp}';")
-                        result = select_sql(connection, sql)
                     else:
                         sendmessage = False
                 else:
                     sendmessage = True
                 if sendmessage:
-                    sql = (
-                        f"select count(text) as text_cnt from messages where text = '{text}' and timestamp = '{timestamp}';")
+                    sql = (f"SELECT COUNT(text) AS text_cnt FROM messages WHERE text = '{text}' AND timestamp = '{timestamp}';")
                     result = select_sql(connection, sql)
                     for row in result:
                         text_cnt = row[0]
                     if text_cnt == 0:
-                        #send the message
                         sent = send_aprs(text)
-                        #add to sent messages if successful
                         if sent:
-                            sql = (
-                                f"insert into messages (text, timestamp) values ('{text}','{timestamp}');")
+                            sql = (f"INSERT INTO messages (text, timestamp) VALUES ('{text}','{timestamp}');")
                             exec_sql(connection, sql)
                     sendmessage = False
         sleep(wait_time)
